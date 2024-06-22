@@ -1,6 +1,8 @@
 package dev.ohhoonim.modulith_demo.orders;
 
 import java.util.Set;
+
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.data.repository.ListCrudRepository;
@@ -30,14 +32,21 @@ class OrderController {
 @Transactional
 class OrderService {
    private final OrderRepository orderRepository;
+   private final ApplicationEventPublisher publisher;
 
-   OrderService(OrderRepository orderRepository) {
+   OrderService(OrderRepository orderRepository, ApplicationEventPublisher publisher) {
       this.orderRepository = orderRepository;
+      this.publisher = publisher;
    }
 
-   public void placeOrder(Order order) {
+   void placeOrder(Order order) {
       var saved = orderRepository.save(order);
       System.out.println("saved order: " + saved);
+      saved.lineItems()
+         .stream()
+         .map(li -> new OrderPlacedEvent(li.id(), li.quantity(), li.product()))
+         .forEach(publisher::publishEvent);
+         
 
    }
 }
